@@ -5,10 +5,13 @@ header("Content-Type: application/json");
 $stkCallbackResponse = file_get_contents('php://input');
 
 // Log the response for debugging
-$logFile = "stkTinypesaResponse.json";
+$logFile = "logs/stkTinypesaResponse.json";
+
+// Open the file in append mode
 $log = fopen($logFile, "a");
 fwrite($log, $stkCallbackResponse . "\n");
 fclose($log);
+
 
 // Decode the JSON response
 $callbackContent = json_decode($stkCallbackResponse);
