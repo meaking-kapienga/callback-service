@@ -7,11 +7,24 @@ $stkCallbackResponse = file_get_contents('php://input');
 // Log the response for debugging
 $logFile = "logs/stkTinypesaResponse.json";
 
-// Open the file in append mode
-$log = fopen($logFile, "a");
-fwrite($log, $stkCallbackResponse . "\n");
-fclose($log);
+// Check if the logs directory exists, if not, create it
+if (!file_exists('logs')) {
+    mkdir('logs', 0777, true);  // Create the directory with write permissions
+}
 
+// Check if the file is writable
+if (is_writable(dirname($logFile))) {
+    // Open the file in append mode
+    $log = fopen($logFile, "a");
+    if ($log) {
+        fwrite($log, $stkCallbackResponse . "\n");
+        fclose($log);
+    } else {
+        error_log("Error: Unable to open log file for writing.");
+    }
+} else {
+    error_log("Error: Logs directory is not writable.");
+}
 
 // Decode the JSON response
 $callbackContent = json_decode($stkCallbackResponse);
@@ -61,6 +74,10 @@ if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         $response = curl_exec($ch);
         curl_close($ch);
+    } else {
+        error_log("Error: Missing necessary data (Amount, MpesaReceiptNumber, PhoneNumber).");
     }
+} else {
+    error_log("Error: Invalid or malformed callback response.");
 }
 ?>
