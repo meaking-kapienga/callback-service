@@ -5,7 +5,8 @@ header("Content-Type: application/json");
 $stkCallbackResponse = file_get_contents('php://input');
 
 // Log the raw callback response for debugging
-$logFile = "logs/stkTinypesaResponse.json";
+// Modify the log file location to use /tmp/ for Render's environment
+$logFile = "/tmp/stkTinypesaResponse.json";
 
 // Ensure the 'logs' directory exists and is writable
 if (!file_exists('logs')) {
