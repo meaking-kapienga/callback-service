@@ -7,58 +7,48 @@ $stkCallbackResponse = file_get_contents('php://input');
 // Log the response for debugging
 $logFile = "logs/stkTinypesaResponse.json";
 
-// Check if the logs directory exists, if not, create it
+// Ensure logs directory exists
 if (!file_exists('logs')) {
-    mkdir('logs', 0777, true);  // Create the directory with write permissions
+    mkdir('logs', 0777, true); // Create logs directory with write permissions
 }
 
-// Check if the file is writable
-if (is_writable(dirname($logFile))) {
-    // Open the file in append mode
-    $log = fopen($logFile, "a");
-    if ($log) {
-        fwrite($log, $stkCallbackResponse . "\n");
-        fclose($log);
-    } else {
-        error_log("Error: Unable to open log file for writing.");
-    }
-} else {
-    error_log("Error: Logs directory is not writable.");
-}
+// Log the raw callback response
+file_put_contents($logFile, $stkCallbackResponse . "\n", FILE_APPEND);
 
 // Decode the JSON response
 $callbackContent = json_decode($stkCallbackResponse);
 
-// Extract transaction details from the response
+// Check if the callback contains the necessary structure
 if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
-    $ResultCode = $callbackContent->Body->stkCallback->ResultCode;
-    $CheckoutRequestID = $callbackContent->Body->stkCallback->CheckoutRequestID;
-    $CallbackMetadata = $callbackContent->Body->stkCallback->CallbackMetadata->Item;
+    $stkCallback = $callbackContent->Body->stkCallback;
+    $ResultCode = $stkCallback->ResultCode ?? null;
+    $CheckoutRequestID = $stkCallback->CheckoutRequestID ?? null;
+    $CallbackMetadata = $stkCallback->CallbackMetadata->Item ?? [];
 
-    // Initialize variables for Amount, MpesaReceiptNumber, and PhoneNumber
+    // Initialize variables
     $Amount = null;
     $MpesaReceiptNumber = null;
     $PhoneNumber = null;
 
-    // Iterate over CallbackMetadata to find the necessary values
+    // Extract required data from CallbackMetadata
     foreach ($CallbackMetadata as $item) {
-        if (isset($item->Name) && $item->Name == 'Amount') {
+        if ($item->Name === 'Amount') {
             $Amount = $item->Value;
         }
-        if (isset($item->Name) && $item->Name == 'MpesaReceiptNumber') {
+        if ($item->Name === 'MpesaReceiptNumber') {
             $MpesaReceiptNumber = $item->Value;
         }
-        if (isset($item->Name) && $item->Name == 'PhoneNumber') {
+        if ($item->Name === 'PhoneNumber') {
             $PhoneNumber = $item->Value;
         }
     }
 
-    // If necessary data is found
+    // Validate extracted data
     if ($Amount && $MpesaReceiptNumber && $PhoneNumber) {
         // Determine transaction status
         $transactionStatus = ($ResultCode === 0) ? 'completed' : 'failed';
 
-        // Now, send data to XAMPP server (your local server for testing)
+        // Prepare data for forwarding to XAMPP server
         $postData = [
             'transaction_id' => $CheckoutRequestID,
             'status' => $transactionStatus,
@@ -67,12 +57,17 @@ if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
             'phone_number' => $PhoneNumber
         ];
 
-        // Send the data to XAMPP for user balance update
-        $ch = curl_init('http://localhost/dongbet/update-balance.php');  // XAMPP URL
+        // Forward data to XAMPP server
+        $ch = curl_init('http://localhost/dongbet/update-balance.php'); // Replace with your local server URL
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         $response = curl_exec($ch);
+
+        // Log the response from XAMPP server
+        file_put_contents("logs/updateBalanceResponse.log", "Response: " . $response . "\n", FILE_APPEND);
+
+        // Close CURL session
         curl_close($ch);
     } else {
         error_log("Error: Missing necessary data (Amount, MpesaReceiptNumber, PhoneNumber).");
