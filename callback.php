@@ -4,18 +4,11 @@ header("Content-Type: application/json");
 // Read the response from TinyPesa
 $stkCallbackResponse = file_get_contents('php://input');
 
-// Log the incoming data for debugging
-file_put_contents(sys_get_temp_dir() . "/incomingData.log", $stkCallbackResponse . "\n", FILE_APPEND);
-
-// Check if data is empty
-if (empty($stkCallbackResponse)) {
-    echo "No data received.";
-    exit;
-}
-
-// Log the response for debugging in the system's temp directory
-$logFile = sys_get_temp_dir() . "/stkTinypesaResponse.json";  // Use the system's temp directory
-file_put_contents($logFile, $stkCallbackResponse . "\n", FILE_APPEND);
+// Log the response for debugging
+$logFile = "stkTinypesaResponse.json";
+$log = fopen($logFile, "a");
+fwrite($log, $stkCallbackResponse . "\n");
+fclose($log);
 
 // Decode the JSON response
 $callbackContent = json_decode($stkCallbackResponse);
@@ -26,11 +19,26 @@ if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
     $CheckoutRequestID = $callbackContent->Body->stkCallback->CheckoutRequestID;
     $CallbackMetadata = $callbackContent->Body->stkCallback->CallbackMetadata->Item;
 
-    if ($CallbackMetadata && count($CallbackMetadata) >= 5) {
-        $Amount = $CallbackMetadata[0]->Value;
-        $MpesaReceiptNumber = $CallbackMetadata[1]->Value;
-        $PhoneNumber = $CallbackMetadata[4]->Value;
+    // Initialize variables for Amount, MpesaReceiptNumber, and PhoneNumber
+    $Amount = null;
+    $MpesaReceiptNumber = null;
+    $PhoneNumber = null;
 
+    // Iterate over CallbackMetadata to find the necessary values
+    foreach ($CallbackMetadata as $item) {
+        if (isset($item->Name) && $item->Name == 'Amount') {
+            $Amount = $item->Value;
+        }
+        if (isset($item->Name) && $item->Name == 'MpesaReceiptNumber') {
+            $MpesaReceiptNumber = $item->Value;
+        }
+        if (isset($item->Name) && $item->Name == 'PhoneNumber') {
+            $PhoneNumber = $item->Value;
+        }
+    }
+
+    // If necessary data is found
+    if ($Amount && $MpesaReceiptNumber && $PhoneNumber) {
         // Determine transaction status
         $transactionStatus = ($ResultCode === 0) ? 'completed' : 'failed';
 
