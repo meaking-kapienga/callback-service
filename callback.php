@@ -5,10 +5,10 @@ header("Content-Type: application/json");
 $stkCallbackResponse = file_get_contents('php://input');
 
 // Log the response for debugging
-$logFile = "stkTinypesaResponse.json";
-$log = fopen($logFile, "a");
-fwrite($log, $stkCallbackResponse . "\n");
-fclose($log);
+$logFile = "stkTinypesaResponse.json";  // If it's in the root of the callback service
+
+// Use file_put_contents to append the response to the JSON log file
+file_put_contents($logFile, $stkCallbackResponse . "\n", FILE_APPEND);
 
 // Decode the JSON response
 $callbackContent = json_decode($stkCallbackResponse);
