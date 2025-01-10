@@ -4,8 +4,8 @@ header("Content-Type: application/json");
 // Read the response from TinyPesa
 $stkCallbackResponse = file_get_contents('php://input');
 
-// Log the response for debugging
-$logFile = "stkTinypesaResponse.json";  // If it's in the root of the callback service
+// Log the response for debugging in the system's temp directory
+$logFile = sys_get_temp_dir() . "/stkTinypesaResponse.json";  // Use the system's temp directory
 
 // Use file_put_contents to append the response to the JSON log file
 file_put_contents($logFile, $stkCallbackResponse . "\n", FILE_APPEND);
