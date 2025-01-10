@@ -4,26 +4,25 @@ header("Content-Type: application/json");
 // Read the response from TinyPesa
 $stkCallbackResponse = file_get_contents('php://input');
 
-// Log the response for debugging
-$logFile = "logs/stkTinypesaResponse.json";
-
 // Ensure logs directory exists
-if (!file_exists('logs')) {
-    mkdir('logs', 0777, true); // Create logs directory with write permissions
+$logsDir = "logs";
+if (!file_exists($logsDir)) {
+    mkdir($logsDir, 0777, true); // Create logs directory with write permissions
 }
 
 // Log the raw callback response
-file_put_contents($logFile, $stkCallbackResponse . "\n", FILE_APPEND);
+$rawLogFile = "$logsDir/rawCallbackData.log";
+file_put_contents($rawLogFile, $stkCallbackResponse . "\n", FILE_APPEND);
 
 // Decode the JSON response
-$callbackContent = json_decode($stkCallbackResponse);
+$callbackContent = json_decode($stkCallbackResponse, true);
 
 // Check if the callback contains the necessary structure
-if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
-    $stkCallback = $callbackContent->Body->stkCallback;
-    $ResultCode = $stkCallback->ResultCode ?? null;
-    $CheckoutRequestID = $stkCallback->CheckoutRequestID ?? null;
-    $CallbackMetadata = $stkCallback->CallbackMetadata->Item ?? [];
+if ($callbackContent && isset($callbackContent['Body']['stkCallback'])) {
+    $stkCallback = $callbackContent['Body']['stkCallback'];
+    $ResultCode = $stkCallback['ResultCode'] ?? null;
+    $CheckoutRequestID = $stkCallback['CheckoutRequestID'] ?? null;
+    $CallbackMetadata = $stkCallback['CallbackMetadata']['Item'] ?? [];
 
     // Initialize variables
     $Amount = null;
@@ -32,14 +31,14 @@ if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
 
     // Extract required data from CallbackMetadata
     foreach ($CallbackMetadata as $item) {
-        if ($item->Name === 'Amount') {
-            $Amount = $item->Value;
+        if ($item['Name'] === 'Amount') {
+            $Amount = $item['Value'];
         }
-        if ($item->Name === 'MpesaReceiptNumber') {
-            $MpesaReceiptNumber = $item->Value;
+        if ($item['Name'] === 'MpesaReceiptNumber') {
+            $MpesaReceiptNumber = $item['Value'];
         }
-        if ($item->Name === 'PhoneNumber') {
-            $PhoneNumber = $item->Value;
+        if ($item['Name'] === 'PhoneNumber') {
+            $PhoneNumber = $item['Value'];
         }
     }
 
@@ -65,7 +64,8 @@ if ($callbackContent && isset($callbackContent->Body->stkCallback)) {
         $response = curl_exec($ch);
 
         // Log the response from XAMPP server
-        file_put_contents("logs/updateBalanceResponse.log", "Response: " . $response . "\n", FILE_APPEND);
+        $updateResponseLogFile = "$logsDir/updateBalanceResponse.log";
+        file_put_contents($updateResponseLogFile, "Response: " . $response . "\n", FILE_APPEND);
 
         // Close CURL session
         curl_close($ch);
